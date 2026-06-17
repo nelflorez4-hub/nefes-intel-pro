@@ -1,3 +1,5 @@
+const https = require('https');
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' }
@@ -10,22 +12,36 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    })
+    const requestBody = JSON.stringify(body)
 
-    const data = await response.json()
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(data),
-    }
+    return new Promise((resolve) => {
+      const req = https.request({
+        hostname: 'api.anthropic.com',
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Length': Buffer.byteLength(requestBody)
+        }
+      }, (res) => {
+        let data = ''
+        res.on('data', chunk => data += chunk)
+        res.on('end', () => {
+          resolve({
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            body: data
+          })
+        })
+      })
+      req.on('error', (e) => {
+        resolve({ statusCode: 500, body: JSON.stringify({ error: e.message }) })
+      })
+      req.write(requestBody)
+      req.end()
+    })
   } catch (error) {
     return { statusCode: 500, body: JSON.stringify({ error: error.message }) }
   }
