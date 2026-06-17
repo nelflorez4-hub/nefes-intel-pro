@@ -223,15 +223,15 @@ export default function App() {
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 2048,
+          max_tokens: mode === 'scouting' ? 1200 : 2048,
           system: SYSTEMS[mode],
           messages: newMessages.map(m => ({ role:m.role, content:m.content })),
         }),
       })
 
       const data = await res.json()
-      console.log('NEFES DEBUG:', JSON.stringify(data).slice(0, 500))
-      const reply = data.content?.filter(b => b.type==='text').map(b => b.text).join('\n') || `Sin respuesta. Keys: ${Object.keys(data||{}).join(',')}`
+      
+      const reply = data.content?.filter(b => b.type==='text').map(b => b.text).join('\n') || 'Sin respuesta.'
       const isScouting = mode === 'scouting' && reply.includes('REPORTE DE SCOUTING')
       setMessages([...newMessages, { role:'assistant', content:reply, isScouting }])
     } catch(e) {
