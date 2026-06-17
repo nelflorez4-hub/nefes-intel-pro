@@ -230,7 +230,8 @@ export default function App() {
       })
 
       const data = await res.json()
-      const reply = data.content?.filter(b => b.type==='text').map(b => b.text).join('\n') || 'Sin respuesta.'
+      console.log('NEFES DEBUG:', JSON.stringify(data).slice(0, 500))
+      const reply = data.content?.filter(b => b.type==='text').map(b => b.text).join('\n') || `Sin respuesta. Keys: ${Object.keys(data||{}).join(',')}`
       const isScouting = mode === 'scouting' && reply.includes('REPORTE DE SCOUTING')
       setMessages([...newMessages, { role:'assistant', content:reply, isScouting }])
     } catch(e) {
