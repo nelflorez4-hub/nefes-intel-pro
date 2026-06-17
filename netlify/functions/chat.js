@@ -14,7 +14,7 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const requestBody = JSON.stringify({
       model: body.model || 'claude-sonnet-4-6',
-      max_tokens: body.max_tokens || 2048,
+      max_tokens: body.max_tokens || 1024,
       system: body.system,
       messages: body.messages
     });
