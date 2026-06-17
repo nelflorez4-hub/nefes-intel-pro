@@ -18,7 +18,7 @@ function callClaude(requestBody, apiKey) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch(e) { reject(new Error('JSON parse error: ' + data)); }
+        catch(e) { reject(new Error('Parse error: ' + data.slice(0, 500))); }
       });
     });
     req.on('error', reject);
@@ -40,49 +40,33 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
 
+    // Primera llamada SIN web_search — respuesta directa
     const baseRequest = {
       model: body.model || 'claude-sonnet-4-6',
       max_tokens: body.max_tokens || 2048,
       system: body.system,
-      messages: body.messages,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+      messages: body.messages
     };
 
-    // Primera llamada
-    let response = await callClaude(baseRequest, apiKey);
+    const response = await callClaude(baseRequest, apiKey);
 
-    // Si Claude usó web_search, hacer la segunda llamada con los resultados
-    let iterations = 0;
-    while (response.stop_reason === 'tool_use' && iterations < 3) {
-      iterations++;
-
-      // Agregar la respuesta del asistente al historial
-      const updatedMessages = [
-        ...baseRequest.messages,
-        { role: 'assistant', content: response.content }
-      ];
-
-      // Construir los tool_results para cada tool_use
-      const toolResults = response.content
-        .filter(b => b.type === 'tool_use')
-        .map(b => ({
-          type: 'tool_result',
-          tool_use_id: b.id,
-          content: b.content || ''
-        }));
-
-      updatedMessages.push({ role: 'user', content: toolResults });
-
-      // Segunda llamada con resultados de búsqueda
-      response = await callClaude({
-        ...baseRequest,
-        messages: updatedMessages
-      }, apiKey);
-    }
-
-    // Extraer texto final
+    // Extraer texto
     const textBlocks = (response.content || []).filter(b => b.type === 'text');
-    const reply = textBlocks.map(b => b.text).join('\n') || 'Sin respuesta.';
+    const reply = textBlocks.map(b => b.text).join('\n');
+
+    if (!reply) {
+      // Devolver debug info si no hay texto
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({
+          content: [{
+            type: 'text',
+            text: `DEBUG — stop_reason: ${response.stop_reason} | error: ${JSON.stringify(response.error)} | content_types: ${(response.content||[]).map(b=>b.type).join(',')}`
+          }]
+        })
+      };
+    }
 
     return {
       statusCode: 200,
@@ -93,7 +77,8 @@ exports.handler = async (event) => {
   } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ content: [{ type: 'text', text: 'ERROR: ' + error.message }] })
     };
   }
 };
