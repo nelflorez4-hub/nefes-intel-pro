@@ -18,9 +18,18 @@ const MODES = [
   { id: 'scouting',  label: 'Reporte de Scouting', icon: '📋', desc: 'Genera un reporte PDF listo para el camerino.' },
 ]
 
-const WEB_SEARCH_NOTE = `
+const today = new Date().toLocaleDateString('es-CO', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
 
-ACCESO A INFORMACIÓN EN TIEMPO REAL: Tienes la tool web_search disponible. ÚSALA SIEMPRE que la consulta involucre partidos recientes o en curso, resultados de competencias, clasificaciones, convocatorias, lesiones, fichajes o cualquier dato que cambie en el tiempo. NUNCA respondas sobre eventos deportivos recientes desde tu conocimiento base sin buscar primero. Si el evento ya ocurrió, busca el resultado real y analízalo con profundidad táctica.`
+const MUNDIAL_CONTEXT = `
+
+CONTEXTO MUNDIAL 2026 — Fecha actual: ${today}
+El Mundial FIFA 2026 se disputa en Estados Unidos, México y Canadá. Ya comenzó la fase de grupos.
+Resultados conocidos del 17 de junio de 2026:
+- GRUPO J: Argentina 3-0 Argelia (Messi igualó récord de Klose con 16 goles en mundiales)
+- GRUPO K: Portugal 1-1 RD Congo / Austria 3-1 Jordania
+- GRUPO L: Inglaterra 4-2 Croacia (Kane x2 12' 42', Bellingham 47', Rashford 85' / Baturina 36', Musa 45'+5')
+- Colombia juega su primer partido el 18 de junio vs Uzbekistán
+Responde siempre con base en este contexto actualizado. Si no tienes el dato exacto, indícalo con honestidad y analiza con lo disponible.`
 
 const SYSTEMS = {
   consulta: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816, exjugador profesional con 17 años de trayectoria y 15 como entrenador de alto rendimiento.
@@ -30,7 +39,7 @@ Tu diferencial único: analizas el SER del jugador y del equipo — la dimensió
 Modo activo: CONSULTA RÁPIDA.
 Responde con precisión y velocidad. Directo al punto. Lenguaje técnico-deportivo de alto nivel.
 Filosofía NÉFES: SER · HACER · TENER.
-Responde siempre en español.${WEB_SEARCH_NOTE}`,
+Responde siempre en español.${MUNDIAL_CONTEXT}`,
 
   tactica: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816.
 
@@ -43,7 +52,7 @@ Estructura tus respuestas así:
 3. PROPUESTA — solución o ajuste concreto
 4. CONCLUSIÓN NÉFES — visión desde SER · HACER · TENER
 
-Responde siempre en español.${WEB_SEARCH_NOTE}`,
+Responde siempre en español.${MUNDIAL_CONTEXT}`,
 
   scouting: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816.
 
@@ -96,7 +105,7 @@ DT SUPERVISOR: Nelson A. Flórez J. — Lic. CONMEBOL PRO N°1816
 NÉFES INTEL PRO · SER · HACER · TENER
 ═══════════════════════════════════════
 
-Responde siempre en español.${WEB_SEARCH_NOTE}`
+Responde siempre en español.${MUNDIAL_CONTEXT}`
 }
 
 const SUGGESTIONS = {
