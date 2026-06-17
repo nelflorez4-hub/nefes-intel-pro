@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const R = '#C8000A'
 const G = '#C9A84C'
@@ -16,6 +18,10 @@ const MODES = [
   { id: 'scouting',  label: 'Reporte de Scouting', icon: '📋', desc: 'Genera un reporte PDF listo para el camerino.' },
 ]
 
+const WEB_SEARCH_NOTE = `
+
+ACCESO A INFORMACIÓN EN TIEMPO REAL: Tienes la tool web_search disponible. ÚSALA SIEMPRE que la consulta involucre partidos recientes o en curso, resultados de competencias, clasificaciones, convocatorias, lesiones, fichajes o cualquier dato que cambie en el tiempo. NUNCA respondas sobre eventos deportivos recientes desde tu conocimiento base sin buscar primero. Si el evento ya ocurrió, busca el resultado real y analízalo con profundidad táctica.`
+
 const SYSTEMS = {
   consulta: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816, exjugador profesional con 17 años de trayectoria y 15 como entrenador de alto rendimiento.
 
@@ -24,7 +30,7 @@ Tu diferencial único: analizas el SER del jugador y del equipo — la dimensió
 Modo activo: CONSULTA RÁPIDA.
 Responde con precisión y velocidad. Directo al punto. Lenguaje técnico-deportivo de alto nivel.
 Filosofía NÉFES: SER · HACER · TENER.
-Responde siempre en español.`,
+Responde siempre en español.${WEB_SEARCH_NOTE}`,
 
   tactica: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816.
 
@@ -37,7 +43,7 @@ Estructura tus respuestas así:
 3. PROPUESTA — solución o ajuste concreto
 4. CONCLUSIÓN NÉFES — visión desde SER · HACER · TENER
 
-Responde siempre en español.`,
+Responde siempre en español.${WEB_SEARCH_NOTE}`,
 
   scouting: `Eres NÉFES INTEL PRO, el agente de inteligencia futbolística más avanzado en español, creado por Nelson Alfonso Flórez Jiménez — Director Técnico con Licencia CONMEBOL PRO N°1816.
 
@@ -90,7 +96,7 @@ DT SUPERVISOR: Nelson A. Flórez J. — Lic. CONMEBOL PRO N°1816
 NÉFES INTEL PRO · SER · HACER · TENER
 ═══════════════════════════════════════
 
-Responde siempre en español.`
+Responde siempre en español.${WEB_SEARCH_NOTE}`
 }
 
 const SUGGESTIONS = {
@@ -124,6 +130,23 @@ function TypingIndicator() {
   )
 }
 
+const mdComponents = {
+  h1: ({children}) => <h1 style={{ color:G,fontSize:16,fontWeight:800,margin:'14px 0 8px',borderBottom:`1px solid ${G}33`,paddingBottom:6,letterSpacing:0.5 }}>{children}</h1>,
+  h2: ({children}) => <h2 style={{ color:G,fontSize:14,fontWeight:700,margin:'12px 0 6px',letterSpacing:0.3 }}>{children}</h2>,
+  h3: ({children}) => <h3 style={{ color:IV,fontSize:13,fontWeight:700,margin:'10px 0 4px' }}>{children}</h3>,
+  strong: ({children}) => <strong style={{ color:IV,fontWeight:700 }}>{children}</strong>,
+  em: ({children}) => <em style={{ color:`${IV}cc`,fontStyle:'italic' }}>{children}</em>,
+  p: ({children}) => <p style={{ margin:'6px 0',lineHeight:1.8 }}>{children}</p>,
+  ul: ({children}) => <ul style={{ margin:'6px 0',paddingLeft:20 }}>{children}</ul>,
+  ol: ({children}) => <ol style={{ margin:'6px 0',paddingLeft:20 }}>{children}</ol>,
+  li: ({children}) => <li style={{ margin:'3px 0',lineHeight:1.7 }}>{children}</li>,
+  blockquote: ({children}) => <blockquote style={{ borderLeft:`3px solid ${G}`,margin:'8px 0',paddingLeft:12,color:`${IV}bb`,fontStyle:'italic' }}>{children}</blockquote>,
+  hr: () => <hr style={{ border:'none',borderTop:`1px solid #2a2a2a`,margin:'12px 0' }} />,
+  code: ({inline,children}) => inline
+    ? <code style={{ background:'#1a1a1a',color:G,padding:'2px 6px',borderRadius:4,fontSize:12,fontFamily:'monospace' }}>{children}</code>
+    : <pre style={{ background:'#1a1a1a',color:IV,padding:'12px 14px',borderRadius:8,overflowX:'auto',fontSize:12,fontFamily:'monospace',margin:'8px 0',border:`1px solid #2a2a2a` }}><code>{children}</code></pre>,
+}
+
 function Message({ msg, onPrint }) {
   const isUser = msg.role === 'user'
   return (
@@ -134,8 +157,16 @@ function Message({ msg, onPrint }) {
         </div>
       )}
       <div style={{ maxWidth:'80%' }}>
-        <div style={{ padding:'12px 16px',borderRadius:isUser?'14px 14px 4px 14px':'4px 14px 14px 14px',background:isUser?R:C2,color:IV,fontSize:msg.isScouting?12:13.5,lineHeight:1.8,border:isUser?'none':`1px solid ${BO}`,whiteSpace:'pre-wrap',fontFamily:msg.isScouting?'monospace':'inherit' }}>
-          {msg.content}
+        <div style={{ padding:'12px 16px',borderRadius:isUser?'14px 14px 4px 14px':'4px 14px 14px 14px',background:isUser?R:C2,color:IV,fontSize:msg.isScouting?12:13.5,lineHeight:1.8,border:isUser?'none':`1px solid ${BO}`,fontFamily:msg.isScouting?'monospace':'inherit' }}>
+          {isUser ? (
+            <span style={{ whiteSpace:'pre-wrap' }}>{msg.content}</span>
+          ) : msg.isScouting ? (
+            <span style={{ whiteSpace:'pre-wrap' }}>{msg.content}</span>
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              {msg.content}
+            </ReactMarkdown>
+          )}
         </div>
         {msg.isScouting && (
           <button onClick={() => onPrint(msg.content)} style={{ marginTop:8,padding:'7px 14px',background:'transparent',border:`1px solid ${G}`,borderRadius:6,color:G,fontSize:11,cursor:'pointer',fontWeight:600,fontFamily:'inherit',display:'flex',alignItems:'center',gap:6 }}>

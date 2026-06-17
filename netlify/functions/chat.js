@@ -12,7 +12,17 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
-    const requestBody = JSON.stringify(body)
+
+    // Agregar web_search tool para información en tiempo real
+    const requestBody = JSON.stringify({
+      ...body,
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search"
+        }
+      ]
+    })
 
     return new Promise((resolve) => {
       const req = https.request({
@@ -29,11 +39,25 @@ exports.handler = async (event) => {
         let data = ''
         res.on('data', chunk => data += chunk)
         res.on('end', () => {
-          resolve({
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-            body: data
-          })
+          try {
+            const parsed = JSON.parse(data)
+            // Extraer solo bloques de texto de la respuesta (ignorar tool_use/tool_result)
+            const textBlocks = (parsed.content || []).filter(b => b.type === 'text')
+            const reply = textBlocks.map(b => b.text).join('\n')
+            resolve({
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: JSON.stringify({
+                content: [{ type: 'text', text: reply || 'Sin respuesta.' }]
+              })
+            })
+          } catch(e) {
+            resolve({
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+              body: data
+            })
+          }
         })
       })
       req.on('error', (e) => {
