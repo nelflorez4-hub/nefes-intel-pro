@@ -18,10 +18,11 @@ function callClaude(requestBody, apiKey) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch(e) { reject(new Error('Parse error: ' + data.slice(0, 500))); }
+        catch(e) { reject(new Error('Parse error: ' + data.slice(0, 300))); }
       });
     });
     req.on('error', reject);
+    req.setTimeout(25000, () => { req.destroy(); reject(new Error('Timeout')); });
     req.write(bodyStr);
     req.end();
   });
@@ -40,45 +41,73 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body);
 
-    // Primera llamada SIN web_search — respuesta directa
-    const baseRequest = {
+    // Llamada con web_search tool
+    const request = {
       model: body.model || 'claude-sonnet-4-6',
       max_tokens: body.max_tokens || 2048,
       system: body.system,
-      messages: body.messages
+      messages: body.messages,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }]
     };
 
-    const response = await callClaude(baseRequest, apiKey);
+    let response = await callClaude(request, apiKey);
 
-    // Extraer texto
-    const textBlocks = (response.content || []).filter(b => b.type === 'text');
-    const reply = textBlocks.map(b => b.text).join('\n');
-
-    if (!reply) {
-      // Devolver debug info si no hay texto
+    // Si hay error de API, devolverlo visible
+    if (response.error) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({
-          content: [{
-            type: 'text',
-            text: `DEBUG — stop_reason: ${response.stop_reason} | error: ${JSON.stringify(response.error)} | content_types: ${(response.content||[]).map(b=>b.type).join(',')}`
-          }]
+          content: [{ type: 'text', text: `Error API: ${response.error.type} — ${response.error.message}` }]
         })
       };
     }
 
+    // Ciclo tool_use: máximo 3 iteraciones
+    let messages = [...body.messages];
+    let iterations = 0;
+
+    while (response.stop_reason === 'tool_use' && iterations < 3) {
+      iterations++;
+
+      // El contenido del asistente (incluyendo tool_use blocks)
+      messages.push({ role: 'assistant', content: response.content });
+
+      // Construir tool_results — la API ya ejecutó la búsqueda, los resultados están en content
+      const toolResults = response.content
+        .filter(b => b.type === 'tool_use')
+        .map(b => ({
+          type: 'tool_result',
+          tool_use_id: b.id,
+          content: typeof b.content === 'string' ? b.content : JSON.stringify(b.content || '')
+        }));
+
+      messages.push({ role: 'user', content: toolResults });
+
+      response = await callClaude({ ...request, messages }, apiKey);
+
+      if (response.error) break;
+    }
+
+    // Extraer texto final
+    const textBlocks = (response.content || []).filter(b => b.type === 'text');
+    const reply = textBlocks.map(b => b.text).join('\n');
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ content: [{ type: 'text', text: reply }] })
+      body: JSON.stringify({
+        content: [{ type: 'text', text: reply || `Sin texto. stop_reason: ${response.stop_reason}` }]
+      })
     };
 
   } catch (error) {
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ content: [{ type: 'text', text: 'ERROR: ' + error.message }] })
+      body: JSON.stringify({
+        content: [{ type: 'text', text: `Error interno: ${error.message}` }]
+      })
     };
   }
 };
